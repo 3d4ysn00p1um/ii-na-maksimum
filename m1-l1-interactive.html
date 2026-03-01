@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Урок 1.1 — Как думает промпт-инженер</title>
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;700;900&family=Onest:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0d0f14;--surface:#13161e;--surface2:#1a1e29;--border:#232840;
+  --accent:#6c63ff;--teal:#00e5b4;--red:#ff6b6b;--yellow:#ffd666;
+  --text:#f0f2ff;--muted:#8890b0;--dim:#555d80;
+}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:'Onest',sans-serif;min-height:100vh}
+body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse 70% 60% at 80% 10%,rgba(108,99,255,0.09) 0%,transparent 60%);pointer-events:none;z-index:0}
+
+.wrap{max-width:820px;margin:0 auto;padding:48px 28px 80px;position:relative;z-index:1}
+
+/* META */
+.lesson-meta{display:flex;align-items:center;gap:10px;margin-bottom:24px;flex-wrap:wrap}
+.badge{background:rgba(0,229,180,.12);border:1px solid rgba(0,229,180,.3);color:var(--teal);font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:4px 14px;border-radius:100px}
+.read-time{margin-left:auto;font-size:12px;color:var(--dim)}
+
+h1{font-family:'Unbounded',sans-serif;font-size:clamp(24px,4vw,38px);font-weight:900;line-height:1.1;letter-spacing:-.02em;margin-bottom:14px}
+h1 .t{color:var(--teal)}
+.lead{font-size:16px;color:var(--muted);line-height:1.7;margin-bottom:36px;border-left:3px solid var(--accent);padding-left:18px}
+
+h2{font-family:'Unbounded',sans-serif;font-size:17px;font-weight:700;margin:40px 0 16px;color:var(--text)}
+p{font-size:15px;line-height:1.75;color:var(--muted);margin-bottom:14px}
+p strong{color:var(--text)}
+.hr{height:1px;background:var(--border);margin:32px 0}
+
+/* CALLOUT */
+.callout{border-radius:14px;padding:16px 20px;margin:20px 0;display:flex;gap:12px}
+.callout.info{background:rgba(108,99,255,.1);border:1px solid rgba(108,99,255,.25)}
+.callout.tip{background:rgba(0,229,180,.08);border:1px solid rgba(0,229,180,.2)}
+.c-icon{font-size:20px;min-width:22px}
+.c-body{font-size:14px;color:var(--muted);line-height:1.6}
+.c-body strong{color:var(--text)}
+
+/* COMPARE */
+.compare{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:22px 0}
+.col{background:var(--surface);border-radius:16px;overflow:hidden}
+.col.bad{border:1px solid rgba(255,107,107,.3)}
+.col.good{border:1px solid rgba(0,229,180,.3)}
+.col-head{padding:11px 16px;font-family:'Unbounded',sans-serif;font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+.col.bad .col-head{background:rgba(255,107,107,.12);color:#ff8a8a}
+.col.good .col-head{background:rgba(0,229,180,.1);color:var(--teal)}
+.col-body{padding:14px 16px;display:flex;flex-direction:column;gap:9px}
+.ci{display:flex;align-items:flex-start;gap:8px;font-size:13px;color:var(--muted);line-height:1.5}
+.ci-icon{font-size:13px;min-width:18px}
+
+/* FORMULA */
+.formula-box{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:22px 26px;margin:22px 0;text-align:center}
+.formula{font-family:'Unbounded',sans-serif;font-size:clamp(12px,2vw,17px);font-weight:700;line-height:1.9}
+.fa{color:var(--accent)}.ft{color:var(--teal)}.fo{color:var(--dim);margin:0 10px}
+.formula-note{font-size:12px;color:var(--dim);margin-top:10px}
+
+/* LEVELS */
+.levels{display:flex;flex-direction:column;gap:10px;margin:20px 0}
+.lv{display:flex;align-items:flex-start;gap:14px;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 18px;transition:border-color .2s}
+.lv:hover{border-color:rgba(108,99,255,.4)}
+.lv-badge{min-width:52px;height:26px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:'Unbounded',sans-serif;font-size:9px;font-weight:700;flex-shrink:0;margin-top:2px}
+.lv1{background:rgba(255,107,107,.15);color:#ff8a8a;border:1px solid rgba(255,107,107,.3)}
+.lv2{background:rgba(255,214,102,.1);color:var(--yellow);border:1px solid rgba(255,214,102,.3)}
+.lv3{background:rgba(108,99,255,.15);color:#a89dff;border:1px solid rgba(108,99,255,.3)}
+.lv4{background:rgba(0,229,180,.12);color:var(--teal);border:1px solid rgba(0,229,180,.3)}
+.lv-text h4{font-size:14px;font-weight:600;color:var(--text);margin-bottom:3px}
+.lv-text p{font-size:13px;color:var(--muted);line-height:1.5;margin:0}
+.lv-text .ex{font-size:12px;color:var(--dim);margin-top:5px;font-style:italic}
+
+/* PROMPT DEMO */
+.prompt-demo{background:var(--surface2);border:1px solid var(--border);border-radius:14px;overflow:hidden;margin:16px 0}
+.pd-head{padding:9px 14px;background:var(--surface);border-bottom:1px solid var(--border);font-size:10px;color:var(--dim);font-weight:700;letter-spacing:.07em;text-transform:uppercase;display:flex;align-items:center;gap:8px}
+.pd-dot{width:8px;height:8px;border-radius:50%}
+.pd-body{padding:16px 18px;font-size:14px;color:var(--muted);line-height:1.7}
+.tag{display:inline-block;background:rgba(108,99,255,.15);border:1px solid rgba(108,99,255,.3);color:#a89dff;font-size:11px;font-weight:600;padding:2px 9px;border-radius:6px;margin:0 2px}
+.tag.t{background:rgba(0,229,180,.1);border-color:rgba(0,229,180,.25);color:var(--teal)}
+
+/* ════════════════════════
+   ПРАКТИКА — КВИЗ
+════════════════════════ */
+.practice-section{
+  background:linear-gradient(135deg,rgba(108,99,255,.1),rgba(0,229,180,.06));
+  border:1px solid rgba(108,99,255,.3);
+  border-radius:22px;padding:32px;margin-top:44px;
+}
+.practice-title{
+  font-family:'Unbounded',sans-serif;font-size:16px;font-weight:700;
+  margin-bottom:6px;display:flex;align-items:center;gap:10px;
+}
+.practice-sub{font-size:13px;color:var(--muted);margin-bottom:28px}
+
+.quiz-progress{display:flex;align-items:center;gap:12px;margin-bottom:28px}
+.quiz-bar{flex:1;height:4px;background:var(--border);border-radius:100px;overflow:hidden}
+.quiz-bar-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--teal));border-radius:100px;transition:width .4s ease}
+.quiz-count{font-size:11px;color:var(--dim);white-space:nowrap}
+
+.question-block{display:none}
+.question-block.active{display:block;animation:fadeUp .35s ease}
+
+.q-num{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);margin-bottom:8px}
+.q-text{font-size:16px;font-weight:600;color:var(--text);line-height:1.5;margin-bottom:20px}
+
+/* options */
+.options{display:flex;flex-direction:column;gap:10px;margin-bottom:20px}
+.option{
+  background:var(--surface);border:1.5px solid var(--border);border-radius:12px;
+  padding:14px 18px;cursor:pointer;font-size:14px;color:var(--muted);
+  transition:all .2s;display:flex;align-items:center;gap:12px;
+  user-select:none;
+}
+.option:hover:not(.disabled){border-color:rgba(108,99,255,.5);color:var(--text);background:rgba(108,99,255,.06)}
+.option .opt-letter{
+  width:26px;height:26px;border-radius:8px;background:var(--surface2);
+  border:1px solid var(--border);display:flex;align-items:center;justify-content:center;
+  font-family:'Unbounded',sans-serif;font-size:10px;font-weight:700;color:var(--dim);
+  flex-shrink:0;transition:all .2s;
+}
+.option.selected{border-color:var(--accent);background:rgba(108,99,255,.1);color:var(--text)}
+.option.selected .opt-letter{background:var(--accent);border-color:var(--accent);color:#fff}
+.option.correct{border-color:var(--teal)!important;background:rgba(0,229,180,.1)!important;color:var(--text)!important}
+.option.correct .opt-letter{background:var(--teal)!important;border-color:var(--teal)!important;color:var(--bg)!important}
+.option.wrong{border-color:var(--red)!important;background:rgba(255,107,107,.08)!important}
+.option.wrong .opt-letter{background:var(--red)!important;border-color:var(--red)!important;color:#fff!important}
+.option.disabled{pointer-events:none}
+
+/* feedback */
+.q-feedback{
+  border-radius:12px;padding:14px 16px;font-size:13.5px;line-height:1.6;
+  display:none;margin-bottom:16px;
+}
+.q-feedback.show{display:block;animation:fadeUp .3s ease}
+.q-feedback.ok{background:rgba(0,229,180,.1);border:1px solid rgba(0,229,180,.25);color:var(--teal)}
+.q-feedback.fail{background:rgba(255,107,107,.08);border:1px solid rgba(255,107,107,.2);color:#ff8a8a}
+.q-feedback strong{color:var(--text)}
+
+/* PROMPT BUILDER */
+.builder{margin-top:8px}
+.builder-label{font-size:12px;font-weight:600;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px}
+.builder-task{
+  background:var(--surface2);border:1px solid var(--border);border-radius:10px;
+  padding:14px 16px;font-size:14px;color:var(--text);line-height:1.6;margin-bottom:14px;
+}
+.builder-slots{display:flex;flex-direction:column;gap:10px;margin-bottom:16px}
+.slot{display:flex;align-items:center;gap:10px}
+.slot-label{
+  font-size:11px;font-weight:700;padding:4px 12px;border-radius:8px;white-space:nowrap;min-width:80px;text-align:center;
+}
+.slot-label.role{background:rgba(108,99,255,.15);border:1px solid rgba(108,99,255,.3);color:#a89dff}
+.slot-label.task{background:rgba(0,229,180,.1);border:1px solid rgba(0,229,180,.25);color:var(--teal)}
+.slot-label.ctx{background:rgba(255,214,102,.1);border:1px solid rgba(255,214,102,.25);color:var(--yellow)}
+.slot-label.fmt{background:rgba(255,107,107,.1);border:1px solid rgba(255,107,107,.2);color:#ff8a8a}
+.slot select,.slot input{
+  flex:1;background:var(--surface);border:1.5px solid var(--border);border-radius:10px;
+  padding:10px 14px;font-size:13px;color:var(--text);font-family:'Onest',sans-serif;
+  outline:none;transition:border-color .2s;appearance:none;
+}
+.slot select:focus,.slot input:focus{border-color:var(--accent)}
+.slot select option{background:var(--surface);color:var(--text)}
+
+.builder-preview{
+  background:var(--surface2);border:1px solid var(--border);border-radius:12px;
+  padding:16px 18px;font-size:14px;color:var(--muted);line-height:1.75;
+  min-height:80px;transition:all .3s;margin-bottom:14px;
+}
+.builder-preview .ph{color:var(--dim);font-style:italic}
+.builder-preview .part-role{color:#a89dff}
+.builder-preview .part-task{color:var(--teal)}
+.builder-preview .part-ctx{color:var(--yellow)}
+.builder-preview .part-fmt{color:#ff8a8a}
+
+/* score */
+.score-screen{display:none;text-align:center;padding:10px 0}
+.score-screen.show{display:block;animation:fadeUp .5s ease}
+.score-emoji{font-size:56px;margin-bottom:12px}
+.score-title{font-family:'Unbounded',sans-serif;font-size:22px;font-weight:900;margin-bottom:8px}
+.score-sub{font-size:14px;color:var(--muted);margin-bottom:24px}
+.score-badges{display:flex;justify-content:center;gap:12px;flex-wrap:wrap;margin-bottom:24px}
+.score-badge{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 20px;text-align:center}
+.score-badge .sv{font-family:'Unbounded',sans-serif;font-size:22px;font-weight:900;color:var(--teal)}
+.score-badge .sl{font-size:11px;color:var(--dim);margin-top:2px}
+
+/* buttons */
+.btn{
+  display:inline-flex;align-items:center;gap:8px;
+  font-family:'Unbounded',sans-serif;font-size:12px;font-weight:700;
+  padding:12px 24px;border-radius:12px;border:none;cursor:pointer;
+  transition:all .2s;letter-spacing:.02em;
+}
+.btn-primary{background:linear-gradient(135deg,var(--accent),#8b83ff);color:#fff;box-shadow:0 4px 20px rgba(108,99,255,.3)}
+.btn-primary:hover{transform:translateY(-1px);box-shadow:0 6px 28px rgba(108,99,255,.4)}
+.btn-primary:disabled{opacity:.4;cursor:default;transform:none}
+.btn-ghost{background:var(--surface2);border:1px solid var(--border);color:var(--muted)}
+.btn-ghost:hover{border-color:var(--accent);color:var(--text)}
+.btn-teal{background:linear-gradient(135deg,rgba(0,229,180,.8),rgba(0,229,180,1));color:var(--bg)}
+.btn-teal:hover{transform:translateY(-1px);box-shadow:0 6px 24px rgba(0,229,180,.25)}
+
+.btn-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+@media(max-width:640px){
+  .compare{grid-template-columns:1fr}
+  .wrap{padding:28px 18px 60px}
+  .practice-section{padding:22px 18px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- META -->
+  <div class="lesson-meta">
+    <span class="badge">🎁 Бесплатно</span>
+    <span style="font-size:12px;color:var(--dim);font-weight:600">Модуль 1 · Урок 1</span>
+    <span class="read-time">⏱ ~12 минут</span>
+  </div>
+
+  <h1>Как думает <span class="t">промпт-инженер</span></h1>
+  <p class="lead">Разница между человеком, который "пробовал ChatGPT", и тем, кто получает профессиональные результаты — не в инструменте. Она в способе мышления. Этот урок — про то, как переключить голову в правильный режим.</p>
+
+  <!-- BLOCK 1 -->
+  <h2>Почему одни получают магию, а другие — мусор</h2>
+  <p>Два человека открывают один и тот же ChatGPT. Один получает посредственный ответ и закрывает вкладку разочарованным. Другой — готовый результат. <strong>Инструмент одинаковый. Мышление — разное.</strong></p>
+
+  <div class="compare">
+    <div class="col bad">
+      <div class="col-head">❌ Обычный пользователь</div>
+      <div class="col-body">
+        <div class="ci"><span class="ci-icon">💬</span>Задаёт расплывчатый вопрос и ждёт чуда</div>
+        <div class="ci"><span class="ci-icon">🎲</span>Надеется что ИИ "догадается" что нужно</div>
+        <div class="ci"><span class="ci-icon">😤</span>Получает плохой ответ и злится на инструмент</div>
+        <div class="ci"><span class="ci-icon">🔁</span>Пишет тот же запрос снова и снова</div>
+        <div class="ci"><span class="ci-icon">😴</span>Думает: "ИИ переоценён"</div>
+      </div>
+    </div>
+    <div class="col good">
+      <div class="col-head">✓ Промпт-инженер</div>
+      <div class="col-body">
+        <div class="ci"><span class="ci-icon">🎯</span>Формулирует задачу как техническое задание</div>
+        <div class="ci"><span class="ci-icon">🧠</span>Понимает что ИИ нужен контекст и роль</div>
+        <div class="ci"><span class="ci-icon">⚙️</span>Получает плохой ответ и улучшает промпт</div>
+        <div class="ci"><span class="ci-icon">🔬</span>Итерирует — каждый запрос лучше предыдущего</div>
+        <div class="ci"><span class="ci-icon">🚀</span>Думает: "это меняет всё"</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="hr"></div>
+
+  <!-- BLOCK 2 -->
+  <h2>Главный сдвиг в мышлении</h2>
+  <p>Большинство общаются с ИИ как с поисковиком. Промпт-инженер общается с ИИ как с <strong>очень способным, но буквальным исполнителем</strong>. Он делает ровно то, что ты говоришь — не то, что ты имеешь в виду.</p>
+
+  <div class="callout info">
+    <span class="c-icon">💡</span>
+    <div class="c-body"><strong>Ключевая идея:</strong> ИИ настолько хорош, насколько хорош твой промпт. Плохой промпт = плохой результат. Это не баг инструмента — это закон работы с ним.</div>
+  </div>
+
+  <div class="formula-box">
+    <div class="formula">
+      <span class="ft">Качество результата</span>
+      <span class="fo">=</span>
+      <span class="fa">Качество промпта</span>
+      <span class="fo">×</span>
+      <span style="color:var(--muted)">Возможности модели</span>
+    </div>
+    <div class="formula-note">Возможности модели ты не контролируешь. Качество промпта — полностью в твоих руках.</div>
+  </div>
+
+  <div class="hr"></div>
+
+  <!-- BLOCK 3 -->
+  <h2>4 уровня пользователей ИИ</h2>
+  <div class="levels">
+    <div class="lv"><div class="lv-badge lv1">Ур. 1</div><div class="lv-text"><h4>Турист</h4><p>Задаёт простые вопросы, удивляется, но не использует в работе.</p><div class="ex">→ "Напиши стихотворение про кошку"</div></div></div>
+    <div class="lv"><div class="lv-badge lv2">Ур. 2</div><div class="lv-text"><h4>Пользователь</h4><p>Использует ИИ для базовых задач: переводы, краткие тексты, простые вопросы.</p><div class="ex">→ "Переведи этот текст на английский"</div></div></div>
+    <div class="lv"><div class="lv-badge lv3">Ур. 3</div><div class="lv-text"><h4>Практик</h4><p>Использует контекст и роли, итерирует промпты, получает стабильно хорошие результаты.</p><div class="ex">→ "Ты — опытный копирайтер. Напиши заголовок для..."</div></div></div>
+    <div class="lv"><div class="lv-badge lv4">Ур. 4</div><div class="lv-text"><h4>Инженер</h4><p>Проектирует промпт-системы, создаёт шаблоны, встраивает ИИ в рабочие процессы.</p><div class="ex">→ Многоступенчатые промпты с переменными и условиями</div></div></div>
+  </div>
+
+  <div class="callout tip">
+    <span class="c-icon">🎯</span>
+    <div class="c-body"><strong>Цель курса</strong> — довести тебя до уровня 3–4. К финалу первого модуля ты уже на уровне Практика.</div>
+  </div>
+
+  <div class="hr"></div>
+
+  <!-- BLOCK 4 -->
+  <h2>Как выглядит разница в действии</h2>
+
+  <div class="prompt-demo">
+    <div class="pd-head"><div class="pd-dot" style="background:var(--red)"></div>Уровень 1 — Турист</div>
+    <div class="pd-body">Напиши письмо клиенту</div>
+  </div>
+
+  <div class="prompt-demo">
+    <div class="pd-head"><div class="pd-dot" style="background:var(--teal)"></div>Уровень 3 — Практик</div>
+    <div class="pd-body">
+      <span class="tag">Роль:</span> Ты — менеджер по продажам B2B-компании.<br><br>
+      <span class="tag t">Задача:</span> Напиши follow-up письмо клиенту после встречи.<br><br>
+      <span class="tag">Контекст:</span> Встреча была вчера, обсуждали CRM-систему. Клиент заинтересован, но попросил время подумать.<br><br>
+      <span class="tag t">Формат:</span> Деловой, но дружелюбный тон. 3–4 абзаца. Без агрессивных продаж — только ценность и следующий шаг.
+    </div>
+  </div>
+
+  <p>Результат второго промпта будет в 10 раз лучше. Не потому что модель другая — а потому что <strong>инструкция другая</strong>.</p>
+
+  <!-- ══════════════════════════════════
+       ПРАКТИКА
+  ══════════════════════════════════ -->
+  <div class="practice-section">
+    <div class="practice-title">✏️ Практика к уроку <span style="background:rgba(108,99,255,.2);border:1px solid rgba(108,99,255,.4);border-radius:8px;padding:3px 12px;font-size:10px;color:#a89dff">5 вопросов + конструктор</span></div>
+    <div class="practice-sub">Проверь понимание и сразу примени — собери свой первый промпт.</div>
+
+    <!-- PROGRESS -->
+    <div class="quiz-progress">
+      <div class="quiz-bar"><div class="quiz-bar-fill" id="qBar" style="width:0%"></div></div>
+      <div class="quiz-count" id="qCount">0 / 5</div>
+    </div>
+
+    <!-- Q1 -->
+    <div class="question-block active" id="q1">
+      <div class="q-num">Вопрос 1 из 5</div>
+      <div class="q-text">Почему два человека получают разные результаты от одной и той же модели ИИ?</div>
+      <div class="options">
+        <div class="option" onclick="answer(this,'q1',false)"><div class="opt-letter">A</div>Один использует платную версию, другой — бесплатную</div>
+        <div class="option" onclick="answer(this,'q1',true)"><div class="opt-letter">B</div>Разное качество промптов — разный результат</div>
+        <div class="option" onclick="answer(this,'q1',false)"><div class="opt-letter">C</div>ИИ случайно выдаёт разные ответы на одинаковые запросы</div>
+        <div class="option" onclick="answer(this,'q1',false)"><div class="opt-letter">D</div>Зависит от скорости интернета</div>
+      </div>
+      <div class="q-feedback" id="fb1"></div>
+      <div class="btn-row"><button class="btn btn-primary" id="next1" onclick="nextQ(2)" disabled>Следующий →</button></div>
+    </div>
+
+    <!-- Q2 -->
+    <div class="question-block" id="q2">
+      <div class="q-num">Вопрос 2 из 5</div>
+      <div class="q-text">Как промпт-инженер реагирует на плохой ответ от ИИ?</div>
+      <div class="options">
+        <div class="option" onclick="answer(this,'q2',false)"><div class="opt-letter">A</div>Злится и закрывает вкладку</div>
+        <div class="option" onclick="answer(this,'q2',false)"><div class="opt-letter">B</div>Пишет тот же запрос ещё раз</div>
+        <div class="option" onclick="answer(this,'q2',true)"><div class="opt-letter">C</div>Анализирует промпт и улучшает его</div>
+        <div class="option" onclick="answer(this,'q2',false)"><div class="opt-letter">D</div>Переключается на другую модель</div>
+      </div>
+      <div class="q-feedback" id="fb2"></div>
+      <div class="btn-row"><button class="btn btn-primary" id="next2" onclick="nextQ(3)" disabled>Следующий →</button></div>
+    </div>
+
+    <!-- Q3 -->
+    <div class="question-block" id="q3">
+      <div class="q-num">Вопрос 3 из 5</div>
+      <div class="q-text">Какой элемент НЕ является частью хорошего промпта?</div>
+      <div class="options">
+        <div class="option" onclick="answer(this,'q3',false)"><div class="opt-letter">A</div>Роль (кем должен быть ИИ)</div>
+        <div class="option" onclick="answer(this,'q3',false)"><div class="opt-letter">B</div>Контекст (что происходит)</div>
+        <div class="option" onclick="answer(this,'q3',true)"><div class="opt-letter">C</div>Название модели ИИ</div>
+        <div class="option" onclick="answer(this,'q3',false)"><div class="opt-letter">D</div>Желаемый формат ответа</div>
+      </div>
+      <div class="q-feedback" id="fb3"></div>
+      <div class="btn-row"><button class="btn btn-primary" id="next3" onclick="nextQ(4)" disabled>Следующий →</button></div>
+    </div>
+
+    <!-- Q4 -->
+    <div class="question-block" id="q4">
+      <div class="q-num">Вопрос 4 из 5</div>
+      <div class="q-text">На каком уровне находится человек, который использует роли и контекст в промптах?</div>
+      <div class="options">
+        <div class="option" onclick="answer(this,'q4',false)"><div class="opt-letter">A</div>Турист</div>
+        <div class="option" onclick="answer(this,'q4',false)"><div class="opt-letter">B</div>Пользователь</div>
+        <div class="option" onclick="answer(this,'q4',true)"><div class="opt-letter">C</div>Практик</div>
+        <div class="option" onclick="answer(this,'q4',false)"><div class="opt-letter">D</div>Инженер</div>
+      </div>
+      <div class="q-feedback" id="fb4"></div>
+      <div class="btn-row"><button class="btn btn-primary" id="next4" onclick="nextQ(5)" disabled>Следующий →</button></div>
+    </div>
+
+    <!-- Q5 — КОНСТРУКТОР ПРОМПТА -->
+    <div class="question-block" id="q5">
+      <div class="q-num">Вопрос 5 из 5 — Конструктор</div>
+      <div class="q-text">Собери промпт для реальной задачи. Выбери компоненты и посмотри как складывается результат.</div>
+
+      <div class="builder">
+        <div class="builder-label">Задача:</div>
+        <div class="builder-task">Написать пост для Instagram о новом продукте</div>
+
+        <div class="builder-slots">
+          <div class="slot">
+            <span class="slot-label role">Роль</span>
+            <select id="s-role" onchange="updatePreview()">
+              <option value="">— выбери роль —</option>
+              <option value="Ты — опытный SMM-специалист с 5 годами опыта в Instagram.">SMM-специалист</option>
+              <option value="Ты — копирайтер, специализирующийся на продающих текстах.">Копирайтер</option>
+              <option value="Ты — маркетолог, который умеет писать вирусный контент.">Маркетолог</option>
+            </select>
+          </div>
+          <div class="slot">
+            <span class="slot-label task">Задача</span>
+            <select id="s-task" onchange="updatePreview()">
+              <option value="">— уточни задачу —</option>
+              <option value="Напиши цепляющий пост для Instagram о запуске нового продукта.">Пост о запуске</option>
+              <option value="Напиши пост-анонс с интригой и призывом к действию.">Анонс с интригой</option>
+              <option value="Напиши пост с отзывом от лица довольного клиента.">Отзыв клиента</option>
+            </select>
+          </div>
+          <div class="slot">
+            <span class="slot-label ctx">Контекст</span>
+            <select id="s-ctx" onchange="updatePreview()">
+              <option value="">— добавь контекст —</option>
+              <option value="Продукт: органический крем для лица. Целевая аудитория: женщины 25–40 лет.">Крем для лица</option>
+              <option value="Продукт: онлайн-курс по Python. Целевая аудитория: начинающие разработчики.">Курс по Python</option>
+              <option value="Продукт: умные часы. Целевая аудитория: активные люди 20–35 лет.">Умные часы</option>
+            </select>
+          </div>
+          <div class="slot">
+            <span class="slot-label fmt">Формат</span>
+            <select id="s-fmt" onchange="updatePreview()">
+              <option value="">— укажи формат —</option>
+              <option value="Объём: 150–200 слов. Добавь 5–7 релевантных хэштегов. Используй эмодзи.">С хэштегами и эмодзи</option>
+              <option value="Объём: 3–4 абзаца. Без хэштегов. Деловой, но живой тон.">Деловой без хэштегов</option>
+              <option value="Короткий и хлёсткий: 2–3 предложения максимум. Одно мощное CTA в конце.">Очень коротко + CTA</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="builder-label">Твой промпт:</div>
+        <div class="builder-preview" id="preview">
+          <span class="ph">Выбери компоненты выше — промпт соберётся здесь автоматически ✨</span>
+        </div>
+
+        <div class="q-feedback" id="fb5"></div>
+        <div class="btn-row">
+          <button class="btn btn-primary" id="next5" onclick="checkBuilder()" disabled>Проверить →</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- SCORE -->
+    <div class="score-screen" id="scoreScreen">
+      <div class="score-emoji" id="scoreEmoji">🎉</div>
+      <div class="score-title" id="scoreTitle"></div>
+      <div class="score-sub" id="scoreSub"></div>
+      <div class="score-badges">
+        <div class="score-badge"><div class="sv" id="scoreRight"></div><div class="sl">правильных</div></div>
+        <div class="score-badge"><div class="sv" id="scoreLevel"></div><div class="sl">твой уровень</div></div>
+      </div>
+      <div class="btn-row" style="justify-content:center">
+        <button class="btn btn-teal" onclick="restart()">↩ Пройти заново</button>
+      </div>
+    </div>
+
+  </div><!-- /practice -->
+
+</div><!-- /wrap -->
+
+<script>
+let correct = 0;
+let answered = 0;
+const total = 5;
+
+const feedbacks = {
+  q1: {
+    ok: '✅ Верно! Качество результата зависит от качества промпта, а не от версии модели.',
+    fail: '❌ Не совсем. Версия модели имеет значение, но главный фактор — качество промпта. Плохой промпт даст плохой результат даже на самой мощной модели.'
+  },
+  q2: {
+    ok: '✅ Точно! Промпт-инженер воспринимает плохой ответ как сигнал улучшить запрос — а не как проблему инструмента.',
+    fail: '❌ Нет. Настоящий промпт-инженер анализирует что пошло не так в промпте и итерирует — то есть улучшает запрос.'
+  },
+  q3: {
+    ok: '✅ Верно! Название модели — не часть промпта. Хороший промпт содержит роль, задачу, контекст и формат.',
+    fail: '❌ Нет. Название модели не является частью промпта. Роль, контекст, задача и формат — вот четыре ключевых компонента.'
+  },
+  q4: {
+    ok: '✅ Правильно! Уровень 3 — Практик — это именно тот, кто осознанно использует роли и контекст.',
+    fail: '❌ Не совсем. Использование ролей и контекста — это признак Практика (уровень 3). Инженер идёт ещё дальше — он строит системы.'
+  }
+};
+
+function answer(el, qId, isCorrect) {
+  const block = document.getElementById(qId);
+  const opts = block.querySelectorAll('.option');
+  opts.forEach(o => o.classList.add('disabled'));
+
+  const fb = document.getElementById('fb' + qId.slice(1));
+  const nextBtn = document.getElementById('next' + qId.slice(1));
+
+  if (isCorrect) {
+    el.classList.add('correct');
+    fb.className = 'q-feedback show ok';
+    fb.innerHTML = feedbacks[qId].ok;
+    correct++;
+  } else {
+    el.classList.add('wrong');
+    // highlight correct
+    opts.forEach(o => {
+      if (o.onclick.toString().includes('true')) o.classList.add('correct');
+    });
+    fb.className = 'q-feedback show fail';
+    fb.innerHTML = feedbacks[qId].fail;
+  }
+
+  answered++;
+  updateProgress();
+  nextBtn.disabled = false;
+}
+
+function nextQ(n) {
+  document.querySelectorAll('.question-block').forEach(b => b.classList.remove('active'));
+  const next = document.getElementById('q' + n);
+  if (next) {
+    next.classList.add('active');
+    next.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+}
+
+function updateProgress() {
+  const pct = (answered / total) * 100;
+  document.getElementById('qBar').style.width = pct + '%';
+  document.getElementById('qCount').textContent = answered + ' / ' + total;
+}
+
+// BUILDER
+function updatePreview() {
+  const role = document.getElementById('s-role').value;
+  const task = document.getElementById('s-task').value;
+  const ctx  = document.getElementById('s-ctx').value;
+  const fmt  = document.getElementById('s-fmt').value;
+
+  const btn = document.getElementById('next5');
+  const allFilled = role && task && ctx && fmt;
+  btn.disabled = !allFilled;
+
+  const preview = document.getElementById('preview');
+  if (!role && !task && !ctx && !fmt) {
+    preview.innerHTML = '<span class="ph">Выбери компоненты выше — промпт соберётся здесь автоматически ✨</span>';
+    return;
+  }
+
+  let html = '';
+  if (role) html += `<span class="part-role">${role}</span><br><br>`;
+  if (task) html += `<span class="part-task">${task}</span><br><br>`;
+  if (ctx)  html += `<span class="part-ctx">${ctx}</span><br><br>`;
+  if (fmt)  html += `<span class="part-fmt">${fmt}</span>`;
+  preview.innerHTML = html;
+}
+
+function checkBuilder() {
+  const role = document.getElementById('s-role').value;
+  const task = document.getElementById('s-task').value;
+  const ctx  = document.getElementById('s-ctx').value;
+  const fmt  = document.getElementById('s-fmt').value;
+
+  const fb = document.getElementById('fb5');
+  if (role && task && ctx && fmt) {
+    fb.className = 'q-feedback show ok';
+    fb.innerHTML = '✅ <strong>Отличный промпт!</strong> Ты использовал все 4 компонента: роль, задачу, контекст и формат. Именно так думает промпт-инженер. Скопируй этот промпт и попробуй в ChatGPT или Claude прямо сейчас.';
+    correct++;
+    answered++;
+    updateProgress();
+    document.getElementById('next5').disabled = true;
+    setTimeout(showScore, 1200);
+  }
+}
+
+function showScore() {
+  document.querySelectorAll('.question-block').forEach(b => b.classList.remove('active'));
+  const screen = document.getElementById('scoreScreen');
+  screen.classList.add('show');
+
+  const pct = correct / total;
+  let emoji, title, sub, level;
+
+  if (pct === 1) {
+    emoji = '🏆'; title = 'Идеальный результат!'; level = 'Практик';
+    sub = 'Ты усвоил всё с первого раза. Мышление промпт-инженера уже включается.';
+  } else if (pct >= 0.6) {
+    emoji = '🎯'; title = 'Хороший результат!'; level = 'Пользователь+';
+    sub = 'Основы понял. Пара моментов требует закрепления — они откроются в следующем уроке.';
+  } else {
+    emoji = '💪'; title = 'Хорошее начало!'; level = 'Турист→';
+    sub = 'Рекомендуем перечитать урок и пройти практику ещё раз — с каждым разом становится яснее.';
+  }
+
+  document.getElementById('scoreEmoji').textContent = emoji;
+  document.getElementById('scoreTitle').textContent = title;
+  document.getElementById('scoreSub').textContent = sub;
+  document.getElementById('scoreRight').textContent = correct + '/' + total;
+  document.getElementById('scoreLevel').textContent = level;
+
+  screen.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+function restart() {
+  correct = 0; answered = 0;
+  updateProgress();
+  document.getElementById('scoreScreen').classList.remove('show');
+  document.querySelectorAll('.question-block').forEach(b => b.classList.remove('active'));
+  document.getElementById('q1').classList.add('active');
+
+  document.querySelectorAll('.option').forEach(o => {
+    o.classList.remove('selected','correct','wrong','disabled');
+  });
+  document.querySelectorAll('.q-feedback').forEach(f => {
+    f.className = 'q-feedback'; f.innerHTML = '';
+  });
+  ['next1','next2','next3','next4','next5'].forEach(id => {
+    document.getElementById(id).disabled = true;
+  });
+  ['s-role','s-task','s-ctx','s-fmt'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+  updatePreview();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+</script>
+</body>
+</html>
